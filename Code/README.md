@@ -1,4 +1,0 @@
-# MachineLearningQFT
-
-
-In progress.

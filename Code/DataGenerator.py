@@ -3,14 +3,14 @@ import numpy as np
 import pandas as pd
 import pylab as plt
 import tensorflow as tf
-import NewUtilities as u
+import Utilities as u
 
 ############################################################################
 ##################### IMPORT AND SET META PARAMETERS #######################
 ############################################################################
 
 ### Input parameters are set by DataGenerator_Parameters.py ###
-import SDataGenerator_Parameters as PDG
+import DataGenerator_Parameters as PDG
 
 GenerateData = PDG.GenerateData
 
@@ -346,28 +346,6 @@ for t in range(len(PlotTimes)):
         X = ExpData[:,:-LO]
         y = ExpData[:,-1:]
 
-        '''### Adding Squares to Data ###
-        print('Adding Squares to Data')
-        n_train = int(f_train*ExpData.shape[0])  # Number of data points used for training
-        n_valid = int(f_valid*ExpData.shape[0])  # Number of data points used for validating     
-    
-        X_train = X[:n_train]            # X is the unlabeled data points 
-        y_train = y[:n_train]            # Y is the labels 
-
-        Xm = np.mean(X_train, 0).real
-        Xm = np.tile(Xm, (X.shape[0], 1))
-        X2 = (X -Xm)**2
-        rms = np.sqrt(np.mean(X2[:n_train]))
-        X2 = X2/rms**2
-        X = (X-Xm)/rms
-        SqrData = np.append(X,X2,axis=1)        
-        SqrData = np.append(SqrData,y.reshape((len(y),1)),axis=1)        
-        pd.DataFrame(SqrData).to_csv('Sqr_TrajData_'+CaseString+'.csv',header=None,index=None)
-        
-        ### Doing PCA on Data (with Squares) ###
-        
-        X = SqrData[:,:-LO]
-        y = SqrData[:,-1:]'''
     
         n_train = int(f_train*X.shape[0])  # Number of data points used for training
         n_valid = int(f_valid*X.shape[0])  # Number of data points used for validating     
@@ -428,40 +406,7 @@ for t in range(len(PlotTimes)):
         os.chdir("..")
         print(mycwd)
 
-    '''
-    ############################################################################
-    ########################### MAXIMUM LIKELYHOOD #############################
-    ############################################################################
-    X_PCA = PCAdata[:,:-LO]            # X is the unlabeled data points 
-    y_PCA = PCAdata[:,-1:].flatten()   # Y is the labels 
-    right = 0
-    vm = np.zeros((Cases,Cases))
-    co = [0]*Cases
-    for s in range(X_PCA.shape[0]):
-        if s % 100 == 0: print('At',s)
-        logp=[0]*Cases
-        for k in range(Cases):
-            logp[k] = u.LogProb(X_PCA[s],PrePickedAS[k],N_tom)
-        if max(logp)-min(logp) < np.log(1+0.01):
-            guess = np.random.choice(Cases)
-        else:
-            guess = np.argmax(logp)
-        vm[guess,int(y_PCA[s])] += 1
-        co[int(y_PCA[s])] += 1
-    for k in range(Cases):
-        vm[:,k]=vm[:,k]/co[k]
-    gvm = np.zeros((Cases,1))
-    for s in range(Cases):
-        gs = sum(vm[s,:])
-        if gs < 0.01:
-            gvm[s] = 1/Cases
-        else:
-            gvm[s] = vm[s,s]/gs
-    vm = np.append(vm,gvm,axis=1)             
-    BGvm = pd.DataFrame.from_items([(YLabels[k],vm[k]) for k in range(len(YLabels))],orient='index', columns=YLabels+['Marg'])
-    print(BGvm)
-    BGvm.to_csv('MaxLike_'+CaseString+'.csv')
-    '''
+    
     
     ############################################################################
     ##################### PROCESSING DATA FOR N.N. #############################
@@ -515,9 +460,6 @@ for t in range(len(PlotTimes)):
         n1o = nH1
         v1  = np.sqrt(2/(n1i+n1o))
         Init1 = tf.random_normal([n1i,n1o], mean=0.0, stddev=v1, dtype=tf.float32)
-#        Inv = np.linalg.inv(PCAdExamples[:Cases,:Cases])
-#        if np.linalg.norm(Inv) >= 100: Inv = 100*Inv/np.linalg.norm(Inv) 
-#        Init1[:Cases,:Cases] = Inv
          
         W1 = tf.Variable(Init1)
         b1 = tf.Variable(tf.zeros([n1o]))
@@ -699,22 +641,4 @@ for t in range(len(PlotTimes)):
         np.save('BinaryStats', output)	
         pd.DataFrame(output).to_csv('BinaryStats.csv',header=None,index=None)
 
-    ############################################################################
-    ##################### Optional Stuff  ######################################
-    ############################################################################
-        
-    #if RuntSNEonData == True:
-    #    import tSNE
-    
-    #    print('Running tSNE on Env State Data')
-    #    StateInputFile = StateOutputFile
-    #    StateCaseString = 'State_'+CaseString
-    #    tSNE.RunAndPlottSNE(StateInputFile,N_plot_tSNE,YLabels,StateCaseString,LeaveOff_tSNE)
-    #    print('Done!')
-        
-    #    print('Running tSNE on Trajectory Data')
-    #    TrajInputFile = TrajOutputFile
-    #    TrajCaseString = 'Traj_'+CaseString
-    #    tSNE.RunAndPlottSNE(TrajInputFile,N_plot_tSNE,YLabels,TrajCaseString,LeaveOff_tSNE)
-    #    print('Done!')
-    
+   
