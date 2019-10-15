@@ -1,94 +1,115 @@
 import numpy as np
 
 ### Meta Parameters ###
-CaseString = 'ThermalStuff'
-GenerateData = False
-N_Samples    = 100                       # Number of scenarios to compute
+CaseString = 'ThermalStuff'     # String Associated with this run of the code
+GenerateData = True             # If False, code will read in old data
+N_Samples    = 100              # Number of examples to produce for training/validating
 
-### Parameters from quantum field
+### Parameters of the quantum field ###
 sigma = 4.2                 # Detector Smearing
-HbarCbySig = 7.14           # Hbar * c / sigma 
-Ksig = 7                    # UV Cutoff
-a = np.pi/Ksig * sigma      # Lattice spacing
-LatticeLength = 300          # IR Cutoff
+HbarCbySig = 7.14           # Energy of Smearing = Hbar * c / sigma 
+Ksig = 7                    # Determines UV Cutoff
+a = np.pi/Ksig * sigma      # Lattice spacing induced by UV Cutoff
+LatticeLength = 100         # Determines IR Cutoff
 mcc = 0.1                   # Field mass
 wD = 10                     # Detector gap
-lam =10
+lam = 10                    # Coupling energy     
     
-E0 = HbarCbySig * Ksig/np.pi    # Energy unit
-a0 = a                          # Distance unit
+### Units used are hbar = c = a = 1 ###
+E0 = HbarCbySig * Ksig/np.pi   # Energy unit
+a0 = a                         # Distance unit
 
-sigma = sigma/a0           # Normalized smearing
-wD = wD/E0                    # Normalized Detector Gap   
-mcc = mcc/E0                 # Normalized Field Mass
-lam = lam/E0
-
-### Defining the Dynamics ###
-dt= 0.4
-Tmi = 0
-Tma = 0.4
-PlotTimes = list(np.linspace(Tmi,Tma,int(1+(Tma-Tmi)/dt)))
-#+list(np.linspace(1.0,3.2,12))
-#list([180,183.544,184.18,184.81,185.44,186.08,186.71,187.34,187.97,188.61,189.24,189.87])
-PlotTimes = list(set(PlotTimes))
-PlotTimes.sort()
-N_times        = 10 			                # Number of time steps in each scenario
-
-### Picking Environment States ###
-ThermalStateDist = 'Uniform'                 # If 'Gaussian', T = Gaussian(mu,stdev)
-                                             #    'Uniform' , T = Uniform(mu.stdev)
-TMean = 0.125/127
-TDev = 0*TMean                        # Std. Dev for above distributions
-Gsignal = 3.1548                            # Squeezing of the "signal oscillator" 8db -> r = 1/2e^(0.8)
-
-                                             
-LPYD = np.array([
-        ['Case Name','Y Name'   ,'p_c','y','B.Case',     'Dist'         , 'Temp'],
-        ['Uncut'    ,'Full Bond',    0,  1,      1,     LatticeLength,      0],
-        ['Cut'      ,'No Bond'  ,    0,  2,      2,     LatticeLength,      0],
-        ['Signal'   ,'Signal'   ,    0,  3,      3,     LatticeLength,      0],
-        ['Too cold' ,'0.9'      ,    1,  0,      1 ,    int(LatticeLength/2), 0.90*TMean],
-        ['Cold'     ,'0.92'     ,    1,  1,      1 ,    int(LatticeLength/2), 0.92*TMean],
-        ['Thermal'  ,'0.94'     ,    0,  2,      1 ,    int(LatticeLength/2), 0.94*TMean],
-        ['Hot'      ,'0.96'     ,    0,  3,      1 ,    int(LatticeLength/2), 0.96*TMean],
-        ['Too hot'  ,'0.98'     ,    0,  4,      1 ,    int(LatticeLength/2), 0.98*TMean],
-        ['Too cold' ,'1.00'     ,    0,  5,      1 ,    int(LatticeLength/2), 1.00*TMean],
-        ['Cold'     ,'1.02'     ,    0,  6,      1 ,    int(LatticeLength/2), 1.02*TMean],
-        ['Thermal'  ,'1.04'     ,    0,  7,      1 ,    int(LatticeLength/2), 1.04*TMean],
-        ['Hot'      ,'1.06'     ,    0,  8,      1 ,    int(LatticeLength/2), 1.06*TMean],
-        ['Too hot'  ,'1.08'     ,    0,  9,      1 ,    int(LatticeLength/2), 1.08*TMean],
-        ['Too hot'  ,'1.10'     ,    0, 10,      1 ,    int(LatticeLength/2), 1.10*TMean]
-        ])
-LPYD = LPYD[1:,:]
-nz = np.nonzero(LPYD[:,2].astype(float))[0]
-LPYD = LPYD[nz,:]
-
-
+### Unitless Parameters ###
+sigma = sigma/a0           # Normalized Smearing
+mcc = mcc/E0               # Normalized Field Mass
+wD = wD/E0                 # Normalized Detector Gap   
+lam = lam/E0               # Normaalized Coupling Energy
 
 ### Measurement Options ###
-N_times = 10
-N_tom = 10**20                    # Number of tomography experiments to run in each direction at each time point
+dt= 0.4             # Duration of each measurement window
+Tmin = 2.8          # Start of first measurement window
+Tmax = 3.2          # End of last measurement window
+PlotTimes = list(np.linspace(Tmin,Tmax,int((Tmax-Tmin)/dt)+1)) # Linearly spaces measurement windows
+PlotTimes = list(set(PlotTimes))                               # Removes duplicates
+PlotTimes.sort()                                               # Sorts list
+N_times = 10 			          # Number of measurement times considered in each window
+N_tom = 10**20                    # Number of times to repeat the whole experiment
+
+### Defining Classes for Classification ###
+# Thermal Parameters
+TMean = 0.400/127             # Mean Temperature for Thermal Cases
+TDev = 0.01*TMean             # Size of Temperature Bins
+
+# Bounsary Sensing Parameters
+Gsignal = 3.1548              # Squeezing of the "signal oscillator" 8db -> r = 1/2e^(0.8)
+                                             
+### Setting Active Cases (Label, Probability, Y-label, Details) ###
+LPYD = np.array([
+        ['Case Name',  'Abv'  , 'Prob', 'y', 'Boundary Type','Distance to Boundary','Temperature'],
+        ['Full Bond',  'Uncut',      0,   1,               1,         LatticeLength,            0],
+        ['No Bond'  ,  'Cut'  ,      0,   2,               2,         LatticeLength,            0],
+        ['Signal'   ,  'Sign' ,      0,   3,               3,         LatticeLength,            0],
+        ['89-91%'   ,  '0.9'  ,      1,   0,               1,  int(LatticeLength/2),   0.90*TMean],
+        ['91-93%'   ,  '0.92' ,      1,   1,               1,  int(LatticeLength/2),   0.92*TMean],
+        ['93-95%'   ,  '0.94' ,      1,   2,               1,  int(LatticeLength/2),   0.94*TMean],
+        ['95-97%'   ,  '0.96' ,      1,   3,               1,  int(LatticeLength/2),   0.96*TMean],
+        ['97-99%'   ,  '0.98' ,      1,   4,               1,  int(LatticeLength/2),   0.98*TMean],
+        ['99-101%'  ,  '1.00' ,      1,   5,               1,  int(LatticeLength/2),   1.00*TMean],
+        ['101-103%' ,  '1.02' ,      1,   6,               1,  int(LatticeLength/2),   1.02*TMean],
+        ['103-105%' ,  '1.04' ,      1,   7,               1,  int(LatticeLength/2),   1.04*TMean],
+        ['105-107%' ,  '1.06' ,      1,   8,               1,  int(LatticeLength/2),   1.06*TMean],
+        ['107-109%' ,  '1.08' ,      1,   9,               1,  int(LatticeLength/2),   1.08*TMean],
+        ['109-111%' ,  '1.10' ,      1,  10,               1,  int(LatticeLength/2),   1.10*TMean]
+        ])
+
+LPYD = LPYD[1:,:]                            # Remove first row 
+nz = np.nonzero(LPYD[:,2].astype(float))[0]  # Find rows with non-zero probability
+LPYD = LPYD[nz,:]                            # Isolate Rows with non-zero probability
+
+DupYLabels = LPYD[:,1]          # Extract the y labels from LPYD (with duplicates)
+YLabels = []                    # Remove the duplicates
+for i in DupYLabels: 
+    if i not in YLabels: 
+        YLabels.append(i)
+
+plist = LPYD[:,2].astype(float) # Extract probabilities from LYPD
+ptot  = sum(plist)              # Compute their sum
+plist = plist/ptot              # Normalize them
+Cases = len(plist)              # Number of cases being considered
+
+ylist  = LPYD[:,3].astype(int)  # Extract y-values from LPYD (with duplicates)
+ylist2 = []                     # Remove duplicates from ylist
+for i in ylist: 
+    if i not in ylist2: 
+        ylist2.append(i)    
+for k in range(len(ylist)):     # Reduce values in ylist to 0 through Cases
+    ylist[k] = ylist2.index(ylist[k])
+ylist2 = str(ylist2)
+    
+Blist = LPYD[:,4].astype(int)      # Extract Boudary conditions from LPYD
+Dlist = LPYD[:,5].astype(int)      # Extract Distances from LPYD
+TempList = LPYD[:,6].astype(float) # Extract Distances from LPYD
 
 ### PCA Options ###
-RunPCAonData = False
-PCA_Var_Keep = 1
-N_PCA_plot   = 1000                          # Number of data points to plot in PCA 
+RunPCAonData = True               # Whether or not to do PCA
+PCA_Var_Keep = 1                  # Fraction of variance to be kept after PCA (0 to 1 or 'All') 
+N_PCA_plot   = 1000               # Number of data points to ploted in PCA 
 
-
-### tSNE Options ###
-RunNNonData = False
-f_train = 75
-f_valid = 25
-f_test = 0
-nH1 = 20
-nH2 = 'Skip'
-dropout_prob = 0.5
-L2reg = 0.01
-learning_rate = 0.01
-N_epochs = 100
-minibatch_size = 10
-
-fsum = f_train + f_valid + f_test
+### Neural Network Options ###
+RunNNonData = True                # Whether or not to train the Neural Network
+f_train = 75                      # Fraction of data used for training 
+f_valid = 25                      # Fraction of data used for validation
+f_test = 0                        # Fraction of data reserved for testing
+fsum = f_train + f_valid + f_test # Normalize
 f_train = f_train/fsum
 f_valid = f_valid/fsum
 f_test  = f_test/fsum
+
+nH1 = 30                          # Number of neurons in the first hidden layer
+nH2 = 'Skip'                      # Number of neurons in the second hidden layer or 'Skip'
+dropout_prob = 0.5                # Dropout probability for training
+L2reg = 0.0001                    # L2 Regularizer
+learning_rate = 0.01              # Learning Rate
+N_epochs = 1000                    # Number of epoch to train over
+minibatch_size = 110              # Minibatch size
+

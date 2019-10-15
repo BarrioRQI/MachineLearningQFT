@@ -6,88 +6,59 @@ import tensorflow as tf
 import Utilities as u
 
 ############################################################################
-##################### IMPORT AND SET META PARAMETERS #######################
+##################### IMPORT AND SET PARAMETERS ############################
 ############################################################################
 
 ### Input parameters are set by DataGenerator_Parameters.py ###
 import DataGenerator_Parameters as PDG
+CaseString = PDG.CaseString	     # String associated with this run of the code
+GenerateData = PDG.GenerateData  # Whether or not to generate new data
+N_s = PDG.N_Samples              # Number of examples to produce for training/validating
 
-GenerateData = PDG.GenerateData
+### Quantum Field Parameters ###
+LatLen = PDG.LatticeLength       # Length of Oscillator Lattice
+mcc = PDG.mcc                    # Field Mass
 
-CaseString = PDG.CaseString		# The string which labels this run of the code
-LPYD = PDG.LPYD
-
-# Identifying the Y labels 
-DupYLabels = LPYD[:,1]          # Extract the y labels from LPYD (with duplicates)
-YLabels = []                    # Remove the duplicates
-for i in DupYLabels: 
-    if i not in YLabels: 
-        YLabels.append(i)
-
-# Normalize the relative probabilities of each case
-plist = LPYD[:,2].astype(float) # Extract probabilities from LYPD
-ptot  = sum(plist)              # Compute Total
-plist = plist/ptot              # Normalize
-
-ylist  = LPYD[:,3].astype(int)  # Extract y-values from LPYD (with duplicates)
-ylist2 = []                     # ylist 2 = ylilst without duplicates
-for y in ylist:
-    if y not in ylist2:
-        ylist2.append(y)    
-for k in range(len(ylist)):     # reduce values in ylist to 0 through Cases
-    ylist[k] = ylist2.index(ylist[k])
-    
-Blist = LPYD[:,4].astype(int)   # list of boudary condition being considered
-Dlist = LPYD[:,5].astype(int)   # list of coupling distances being considered
-TempList = LPYD[:,6].astype(float)
-Cases = len(plist)
-
-N_s = PDG.N_Samples
-
-############################################################################
-##################### IMPORT AND SET PARAMETERS ############################
-############################################################################
-
-### Environment Geometry and Hamiltonian ###
-LatLen = PDG.LatticeLength              # Number of qubit systems along each axis
-N_Env = LatLen                 # Number of qubit systems in the environment
-
-sigma = PDG.sigma           # Normalized smearing
-wD = PDG.wD                    # Normalized Detector Gap   
-mcc = PDG.mcc                 # Normalized Field Mass
-lam = PDG.lam
-                    
-### Defining the Dynamics ###
-PlotTimes = PDG.PlotTimes
-N_times    = PDG.N_times				    # Number of time steps considered in each scenario
-
-### Picking Environment States ###
-TDist = PDG.ThermalStateDist        # Distribution thermal states are chosen from
-TMean = PDG.TMean        # Parameter of this distribution                        
-TDev  = PDG.TDev          # Parameter of this distribution
-Gsignal= PDG.Gsignal                    # Squeezing of the "signal oscillator"
+### Probe/Coupling Parameters ###
+sigma = PDG.sigma                # Probe Smearing Width
+wD = PDG.wD                      # Probe Energy Gap   
+lam = PDG.lam                    # Probe - Field Coupling Strength
 
 ### Measurement Options ###
-N_tom = PDG.N_tom                   # Number of tomography experiments to run in each direction at each time point
+PlotTimes = PDG.PlotTimes        # Defines measurement windows
+N_times    = PDG.N_times		 # Number of time steps considered in each scenario
+N_tom = PDG.N_tom                # Number of tomography experiments to run in each direction at each time point
 
+### Defining Classes for Classification ###
+TMean = PDG.TMean                # Mean Temperature for Thermal Cases
+TDev  = PDG.TDev                 # Size of Temperature Bins
+Gsignal= PDG.Gsignal             # Squeezing of the "signal oscillator"
+
+Cases   = PDG.Cases            # Number of cases being considered
+YLabels = PDG.YLabels          # List of y-labels
+plist   = PDG.plist            # List of probabilities
+ylist   = PDG.ylist            # List of y-values
+Blist   = PDG.Blist            # List of Boundary Conditions
+Dlist   = PDG.Dlist            # List of Distances to Boundary
+TempList = PDG.TempList        # List of Temperatures
 
 ### PCA Options ###
-RunPCAonData = PDG.RunPCAonData
-PCA_Var_Keep = PDG.PCA_Var_Keep
+RunPCAonData = PDG.RunPCAonData    # Whether or not to run PCA
+PCA_Var_Keep = PDG.PCA_Var_Keep    # Fraction of variance to be kept
 N_PCA_plot   = PDG.N_PCA_plot      # Number of data points to plot in PCA 
 
 ### Classification Options ###
-RunNNonData = PDG.RunNNonData
-f_train = PDG.f_train
-f_valid = PDG.f_valid
-f_test = PDG.f_test
-nH1    = PDG.nH1
-nH2    = PDG.nH2
-dropout_prob = PDG.dropout_prob
-L2reg = PDG.L2reg
-learning_rate     = PDG.learning_rate
-N_epochs = PDG.N_epochs
-minibatch_size = PDG.minibatch_size
+RunNNonData = PDG.RunNNonData       # Whether or not to train the Neural Network
+f_train = PDG.f_train               # Fraction of data used for training 
+f_valid = PDG.f_valid               # Fraction of data used for validation
+f_test = PDG.f_test                 # Fraction of data reserved for testing
+nH1    = PDG.nH1                    # Number of neurons in the first hidden layer
+nH2    = PDG.nH2                    # Number of neurons in the second hidden layer or 'Skip'
+dropout_prob = PDG.dropout_prob     # Dropout probability for training
+L2reg = PDG.L2reg                   # L2 Regularizer
+learning_rate = PDG.learning_rate   # Learning Rate
+N_epochs = PDG.N_epochs             # Number of epoch to train over
+minibatch_size = PDG.minibatch_size # Minibatch size
 
 ############################################################################
 ##################### INITIALIZATION #######################################
@@ -138,12 +109,13 @@ for t in range(len(PlotTimes)):
 
     Tmax = PlotTimes[t]
     Tmin = PlotTimes[t-1]    
+
     print('Computing Unitaries and Evolved Projectors')
     ProjList = [0]*Cases
     for k in range(Cases):
         ProjList[k] = u.DefProjList(Hlist_dynamic[k],N_times,Tmin,Tmax)
     print('Done!')
-    MedProj = np.median(ProjList,axis=0)
+    MedProj = np.median(ProjList,axis=0) # Compute the median projector
    
     ############################################################################
     ######################## COMPUTING EXACT STATISTICS ########################
@@ -161,19 +133,19 @@ for t in range(len(PlotTimes)):
     
     RS0 = u.InitializeProbeState('Ground')
     
-    RSE0List = [0]*Cases
+    RSE0List = [0]*Cases                                   # List of probe-environment initial states
     for k in range(Cases):
         RE0 = u.ThermalState(Hlist_thermal[k],TempList[k]) # Compute the environment's thermal state
-        if B == 3:
-            RE0[0,0]= Gsignal
-            RE0[0,N_Env]= 0
-            RE0[N_Env,0]= 0
-            RE0[N_Env,N_Env]= 1/Gsignal
-    
-        RSE0 = u.directsum(RE0,RS0)                       # Compute the initial probe-environment state
-        RSE0List[k] = RSE0
-    MedRSE0 = np.median(RSE0List,axis=0)
+        if B == 3:                                         # In the signaling case
+            RE0[0,0]= Gsignal                              # Squeeze the last oscillator
+            RE0[0,LatLen]= 0                               
+            RE0[LatLen,0]= 0
+            RE0[LatLen,LatLen]= 1/Gsignal    
+        RSE0List[k] = u.directsum(RE0,RS0)                 # Compute the initial probe-environment state
+    MedRSE0 = np.median(RSE0List,axis=0)                   # Compute the median probe-environment stat
 
+
+    ### Computing "Median" Probe Trajectory ###
     d1 = MedProj.shape[0]
     d2 = MedProj.shape[1]
     MedAS = np.zeros((d1,d2))
@@ -182,24 +154,24 @@ for t in range(len(PlotTimes)):
              MedAS[n,r] = np.trace(MedProj[n,r] @ MedRSE0).real
     MedAS = np.array(MedAS).flatten().real
 
+    ### Calculating probe trajectory in for each case
     PrePickedAS = [0]*(Cases+1)
     PrePickedAS[Cases] = MedAS
-    for k in range(Cases):
-        
-        dP = ProjList[k] - MedProj
-        dS = RSE0List[k] - MedRSE0                
+    for k in range(Cases):        
+        dP = ProjList[k] - MedProj      # Difference from median projector
+        dS = RSE0List[k] - MedRSE0      # Difference from median state
         d1 = ProjList[k].shape[0]
         d2 = ProjList[k].shape[1]
         aS = np.zeros((d1,d2))
-        for n in range(d1):                                            
+        for n in range(d1):             # Compute difference from "median" trajectory
             for r in range(d2):
                  aS[n,r] += np.trace(dP[n,r] @ MedRSE0).real
                  aS[n,r] += np.trace(MedProj[n,r] @ dS).real                         
                  aS[n,r] += np.trace(dP[n,r] @ dS).real
         PrePickedAS[k] = np.array(aS).flatten().real
-
         print('Done for case',k+1,'of',Cases,'!')
 
+    ### Picking Random initial states for thermal case ###
     if TDev != 0 and t == 1:
         d1=RSE0List[0].shape[0]
         d2=RSE0List[0].shape[1]
@@ -207,7 +179,7 @@ for t in range(len(PlotTimes)):
         for c in range(Cases):
             print('Creating states for case',c+1,' of ',Cases,'!')
             for s in range(N_s):
-                Temp = u.RTemp(TempList[c],TDev,'Uniform')
+                Temp = u.RTemp(TempList[c],TDev)
                 RE0 = u.ThermalState(Hlist_thermal[c],Temp)
                 RSE0 = u.directsum(RE0,RS0)
                 BigDSList[c*N_s+s] = RSE0 - MedRSE0
@@ -223,7 +195,7 @@ for t in range(len(PlotTimes)):
     print('Done!')
 
     ############################################################################
-    ##################### HELLINGER DISTANCE & log(N(1/2)) ##############################
+    ##################### HELLINGER DISTANCE & log(N(1/2)) #####################
     ############################################################################
     if TDev != 0:
         print('Cannot Compute Hellinger Distance when TDev != 0')
@@ -240,8 +212,8 @@ for t in range(len(PlotTimes)):
                 sig2 =  2*(MedAS + PrePickedAS[c2])**2                
                 Hellinger, N_half = u.ComputeHellinger(dmu,sig1,sig2,N_tom-1)
                                 
-                Hell[c1,c2] = Hellinger
-                Nhalf[c1,c2] = N_half
+                Hell[c1,c2] = Hellinger         # Hellinger Distance between cases c1 and c2
+                Nhalf[c1,c2] = N_half           # Amount of tomography to get H**2 = 0.5
             
             DF_Hell = pd.DataFrame.from_items([(YLabels[k],Hell[k]) for k in range(len(YLabels))],orient='index', columns=YLabels)
             DF_Hell.to_csv('Hell_'+CaseString+'.csv')
@@ -267,11 +239,12 @@ for t in range(len(PlotTimes)):
         MedAS = PrePickedAS[Cases]
         for c in range(Cases):
             print('Creating data for case',c+1,' of ',Cases,'!')
-            aS = PrePickedAS[c]                                        # Look up the Bloch trajectory for this case
+            aS = PrePickedAS[c]                                        # Look up the exact trajectory for this case
             extrainfo = np.array([ylist[c]])                           # Define extra information about this case
             LO = len(extrainfo)                                        # Define the "leave off" length
 
-            if TDev != 0:
+            # In thermal case compute environment state independent part of the probe trajectory
+            if TDev != 0:                                              
                 dP = ProjList[c] - MedProj
                 d1 = ProjList[c].shape[0]
                 d2 = ProjList[c].shape[1]
@@ -280,10 +253,9 @@ for t in range(len(PlotTimes)):
                     for r in range(d2):
                         aS1[n,r] += np.trace(dP[n,r] @ MedRSE0).real
 
-
             for s in range(N_s):                
+                # In thermal case compute environment state dependent part of the probe trajectory
                 if TDev != 0:                
-                    dP = ProjList[c] - MedProj
                     dS = BigDSList[c*N_s+s]
                     d1 = ProjList[c].shape[0]
                     d2 = ProjList[c].shape[1]
@@ -292,10 +264,9 @@ for t in range(len(PlotTimes)):
                         for r in range(d2):
                             aS[n,r] += aS1[n,r]
                             aS[n,r] += np.trace(ProjList[c][n,r] @ dS).real                         
-                    aS = np.array(aS).flatten().real
+                    aS = np.array(aS).flatten().real                    
                     
-                    
-                aS_tom = u.Tomography(aS,N_tom,MedAS)                       # Add tomographic noise
+                aS_tom = u.Tomography(aS,N_tom,MedAS)                            # Add tomographic noise
                 ExpData0[c,s] = np.concatenate((aS_tom,extrainfo), axis=None)
                 ExpData[c*N_s+s] = np.concatenate((aS_tom,extrainfo), axis=None) # Save this trajectory        
                 if N_s < 20:
@@ -308,11 +279,7 @@ for t in range(len(PlotTimes)):
         print('Outputing Raw Trajectory Data to csv')
         pd.DataFrame(ExpData).to_csv('Raw_TrajData_All.csv',header=None,index=None)
         print('Done!')
-        
-        ExampleAS = np.zeros((Cases,3*N_times))
-        for c in range(Cases):
-            ExampleAS[c] = ExpData[c*N_s,:-1]
-        
+                
         os.chdir("..")
         
         print(mycwd)
@@ -439,7 +406,6 @@ for t in range(len(PlotTimes)):
         xdata = x_train
         ydata = y_train
     
-#        PCAdExamples = (np.array(ExampleAS)-np.tile(Xm, (Cases, 1))) @ M.T
         
         print('Done!')
         
@@ -639,6 +605,4 @@ for t in range(len(PlotTimes)):
         os.chdir("..")
         
         np.save('BinaryStats', output)	
-        pd.DataFrame(output).to_csv('BinaryStats.csv',header=None,index=None)
-
-   
+        pd.DataFrame(output).to_csv('BinaryStats.csv',header=None,index=None)   
