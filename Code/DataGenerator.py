@@ -14,6 +14,7 @@ import DataGenerator_Parameters as PDG
 CaseString = PDG.CaseString	     # String associated with this run of the code
 GenerateData = PDG.GenerateData  # Whether or not to generate new data
 N_s = PDG.N_Samples              # Number of examples to produce for training/validating
+Regression = PDG.Regression
 
 ### Quantum Field Parameters ###
 LatLen = PDG.LatticeLength       # Length of Oscillator Lattice
@@ -53,8 +54,6 @@ f_train = PDG.f_train               # Fraction of data used for training
 f_valid = PDG.f_valid               # Fraction of data used for validation
 f_test = PDG.f_test                 # Fraction of data reserved for testing
 nH1    = PDG.nH1                    # Number of neurons in the first hidden layer
-nH2    = PDG.nH2                    # Number of neurons in the second hidden layer or 'Skip'
-dropout_prob = PDG.dropout_prob     # Dropout probability for training
 L2reg = PDG.L2reg                   # L2 Regularizer
 learning_rate = PDG.learning_rate   # Learning Rate
 N_epochs = PDG.N_epochs             # Number of epoch to train over
@@ -172,6 +171,7 @@ for t in range(len(PlotTimes)):
         print('Done for case',k+1,'of',Cases,'!')
 
     ### Picking Random initial states for thermal case ###
+    if Regression == True: reglist = np.zeros((Cases*N_s,))
     if TDev != 0 and t == 1:
         d1=RSE0List[0].shape[0]
         d2=RSE0List[0].shape[1]
@@ -183,6 +183,7 @@ for t in range(len(PlotTimes)):
                 RE0 = u.ThermalState(Hlist_thermal[c],Temp)
                 RSE0 = u.directsum(RE0,RS0)
                 BigDSList[c*N_s+s] = RSE0 - MedRSE0
+                if Regression == True: reglist[c*N_s+s] = Temp
                     
                 if N_s < 20:
                     pass
@@ -193,7 +194,12 @@ for t in range(len(PlotTimes)):
     #b2.save(OutputFile+'\ExactBlochTraj_All.pdf')
     pd.DataFrame(PrePickedAS).to_csv('ExactTrajData_'+CaseString+'.csv',header=None,index=None)
     print('Done!')
-
+    
+    reglist = reglist - min(reglist)
+    reglist = reglist/max(reglist)
+    reglist = 0.5*reglist
+    reglist = reglist + 0.25
+    
     ############################################################################
     ##################### HELLINGER DISTANCE & log(N(1/2)) #####################
     ############################################################################
@@ -264,7 +270,8 @@ for t in range(len(PlotTimes)):
                         for r in range(d2):
                             aS[n,r] += aS1[n,r]
                             aS[n,r] += np.trace(ProjList[c][n,r] @ dS).real                         
-                    aS = np.array(aS).flatten().real                    
+                    aS = np.array(aS).flatten().real
+                    if Regression == True: extrainfo = np.array([reglist[c*N_s+s]])
                     
                 aS_tom = u.Tomography(aS,N_tom,MedAS)                            # Add tomographic noise
                 ExpData0[c,s] = np.concatenate((aS_tom,extrainfo), axis=None)
@@ -352,28 +359,28 @@ for t in range(len(PlotTimes)):
         dlist = list(range(PCAdData.shape[1]))
         del dlist[d_c:-1]
         PCAdData = PCAdData[:,dlist]
+        
         pd.DataFrame(M).to_csv('PCA_CutEigVec_TrajData_'+CaseString+'.csv',header=None,index=None)
         pd.DataFrame(PCAdData).to_csv('PCAd_CutTrajData_'+CaseString+'.csv',header=None,index=None)
     
-        print('Plotting Data in Max Variance Plane')
-        Var2_state = 100*(lam[0]+lam[1])/sum(lam)
-        ymin = np.min(y)
-        ymax = np.max(y)
-        plt.close()
-        plt.title('PCA\'d Data: Varariance Covered %1.3f' % Var2_state)
-        plt.axes().set_aspect('equal', 'datalim')
-        cm = plt.get_cmap('tab10', ymax-ymin+1)
-        scat = plt.scatter(PCAdData[:N_PCA_plot,0], PCAdData[:N_PCA_plot,1], c = PCAdData[:N_PCA_plot,-1], cmap=cm,vmin = ymin-.5, vmax = ymax+.5)
-        cb = plt.colorbar(scat, ticks=np.arange(ymin,ymax+1))
-        cb.ax.set_yticklabels(YLabels)
-        plt.savefig('Fig_PCA_'+CaseString+'.pdf')
-        print('Done!')
+        if Regression == False: 
+            print('Plotting Data in Max Variance Plane')
+            Var2_state = 100*(lam[0]+lam[1])/sum(lam)
+            ymin = np.min(y)
+            ymax = np.max(y)
+            plt.close()
+            plt.title('PCA\'d Data: Varariance Covered %1.3f' % Var2_state)
+            plt.axes().set_aspect('equal', 'datalim')
+            cm = plt.get_cmap('tab10', ymax-ymin+1)
+            scat = plt.scatter(PCAdData[:N_PCA_plot,0], PCAdData[:N_PCA_plot,1], c = PCAdData[:N_PCA_plot,-1], cmap=cm,vmin = ymin-.5, vmax = ymax+.5)
+            cb = plt.colorbar(scat, ticks=np.arange(ymin,ymax+1))
+            cb.ax.set_yticklabels(YLabels)
+            plt.savefig('Fig_PCA_'+CaseString+'.pdf')
+            print('Done!')
     	
     
         os.chdir("..")
         print(mycwd)
-
-    
     
     ############################################################################
     ##################### PROCESSING DATA FOR N.N. #############################
@@ -401,11 +408,7 @@ for t in range(len(PlotTimes)):
         x_test  = PCAdData[n_train+n_valid:,:-LO]
         y_train = PCAdData[:n_train,-1:].flatten()
         y_valid = PCAdData[n_train:n_train+n_valid,-1:].flatten()
-        y_test  = PCAdData[n_train+n_valid:,-1:].flatten()
-    
-        xdata = x_train
-        ydata = y_train
-    
+        y_test  = PCAdData[n_train+n_valid:,-1:].flatten()    
         
         print('Done!')
         
@@ -414,137 +417,127 @@ for t in range(len(PlotTimes)):
         ############################################################################
         
         print('Defining Network Architecture')
-        nI = xdata.shape[1]         # Input  dimension
-        nO = len(YLabels)           # Output dimension
+        if Regression == True:
+            y_train = np.reshape(y_train,(y_train.shape[0],1))
+            y_valid = np.reshape(y_valid,(y_valid.shape[0],1))
+            y_test = np.reshape(y_test,(y_test.shape[0],1))
         
-        ### Create placeholders for the input data and labels ###
-        x = tf.placeholder(tf.float32, [None, nI]) # input data
-        y = tf.placeholder(tf.int32,[None])       # labels
-        
-        ### Layer 1: ###
-        n1i = nI
-        n1o = nH1
-        v1  = np.sqrt(2/(n1i+n1o))
-        Init1 = tf.random_normal([n1i,n1o], mean=0.0, stddev=v1, dtype=tf.float32)
-         
-        W1 = tf.Variable(Init1)
-        b1 = tf.Variable(tf.zeros([n1o]))
-        z1 = tf.matmul(x, W1) + b1
-        a1 = tf.nn.leaky_relu( z1 )        
-        keep_prob = tf.placeholder("float")
-        a1_drop = tf.nn.dropout(a1, keep_prob)
-        
-        ### Layer 2: ###
-        n2i = n1o
-        n2o = nO if nH2 == 'Skip' else nH2
-        v2 = np.sqrt(2/(n2i+n2o))
-        Init2 = tf.random_normal([n2i,n2o], mean=0.0, stddev=v2, dtype=tf.float32)
+        nI = x_train.shape[1]
+        if Regression == False:
+            nO = len(YLabels)
+        else:
+            nO = 1
 
-        W2 = tf.Variable(Init2)
-        b2 = tf.Variable(tf.zeros([n2o]) )
-        z2 = tf.matmul(a1, W2) + b2
-        a2 = tf.nn.leaky_relu( z2 )
-        
-        ### Layer 3: ###
-        if nH2 != 'Skip':
-            n3i = n2o
-            n3o = nO
-            v3 = np.sqrt(2/(n3i+n3o))
-            Init3 = tf.random_normal([n3i,n3o], mean=0.0, stddev=v3, dtype=tf.float32)
+        X = tf.placeholder("float", [None, nI])
+        if Regression == True:
+            Y = tf.placeholder("float", [None, nO])
+        else:
+            Y = tf.placeholder(tf.int32,[None])
+                   
+        weights = {
+                'h1': tf.Variable(tf.random_normal([nI, nH1],mean=0.0,stddev=np.sqrt(2/(nI+nH1)))),
+                'out': tf.Variable(tf.random_normal([nH1, nO],mean=0.0,stddev=np.sqrt(2/(nH1+nO)))) 
+                }
+        biases = {
+                'b1': tf.Variable(tf.zeros([nH1])),
+                'out': tf.Variable(tf.zeros([nO]))
+                }           
+                
+        def neural_net(x,QReg=False):
+            #hidden layer 1
+            layer_1 = tf.add(tf.matmul(x, weights['h1']), biases['b1'])
+            layer_1 = tf.nn.relu(layer_1)
+            # output layer
+            out_layer = tf.add(tf.matmul(layer_1, weights['out']), biases['out'])
+            if QReg == False: out_layer = tf.nn.softmax(out_layer)
+            if QReg == True: out_layer = tf.sigmoid(out_layer)
+            return out_layer
 
-            W3 = tf.Variable(Init3)
-            b3 = tf.Variable( tf.zeros([n3o]) )
-            z3 = tf.matmul(a2, W3) + b3
-            a3 = tf.nn.leaky_relu( z3 )
+        Y_hat=neural_net(X,QReg = Regression)            
+
+        L2cost = L2reg*(tf.nn.l2_loss(weights['h1'])+tf.nn.l2_loss(weights['out']))
+        if Regression == False:
+            Y_onehot = tf.one_hot(Y,depth = nO)
+            eps = 10**(-10) # to prevent the logs from diverging
+            cross_entropy = tf.reduce_mean(-tf.reduce_sum( Y_onehot * tf.log(Y_hat+eps), reduction_indices=[1]))
+            loss_op = cross_entropy + L2cost
+        if Regression == True:
+            mse_cost = tf.losses.mean_squared_error(Y,Y_hat)
+            loss_op = mse_cost + L2cost
         
-        aL = tf.nn.softmax(a2) if nH2 == 'Skip' else tf.nn.softmax(a3)    
-        
-        ### Cost function: ###
-        y_onehot = tf.one_hot(y,depth = nO) # labels are converted to one-hot representation
-        eps = 10**(-10) # to prevent the logs from diverging
-        cross_entropy = tf.reduce_mean(-tf.reduce_sum( y_onehot * tf.log(aL+eps) +  (1.0-y_onehot )*tf.log(1.0-aL +eps) , reduction_indices=[1]))
-        L2cost= L2reg*(tf.nn.l2_loss(W1)+tf.nn.l2_loss(W2))
-        if nH2 !='Skip': L2cost += tf.nn.l2_loss(W3)
-        cost_func = cross_entropy+L2cost
-        
-        ### Use backpropagation to minimize the cost function using the gradient descent algorithm: ###
-        train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost_func)
-        
-        print('Done!')
-        
-        ##############################################################################
-        ################################## TRAINING ##################################
-        ##############################################################################
-        sess = tf.Session()
-        sess.run(tf.global_variables_initializer())
-        
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate)#define optimizer # play around with learning rate
+        train_op = optimizer.minimize(loss_op)#minimize losss
+
         epoch_list    = [-1]
         cost_training = [np.nan]
         cost_valid    = [np.nan]
         acc_training  = [1/Cases]
         acc_valid     = [1/Cases]
-        disp_list     = []    
-        ### Train using mini-batches for several epochs: ###
+        if Regression == True:
+            acc_training  = [np.nan]
+            acc_valid     = [np.nan]
+        disp_list =[]
+
         print("Beginning Training")
-        
-        permut = np.arange(n_train)
-        num_iterations = 0
-        for epoch in range(N_epochs+1):
-            np.random.shuffle(permut) # Randomly shuffle the indices
-            x_shuffled = x_train[permut,:]
-            y_shuffled = y_train[permut]
-        
-            #Loop over all the mini-batches:
-            for b in range(0, n_train, minibatch_size):
-                x_batch = x_shuffled[b:b+minibatch_size,:]
-                y_batch = y_shuffled[b:b+minibatch_size]
-                sess.run(train_step, feed_dict={x: x_batch, y:y_batch, keep_prob:dropout_prob})
-                num_iterations = num_iterations + 1
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())                
             
-            ### Update the plot and print results every few epochs: ###
-            if epoch % 1 == 0:
-                cost_tr = sess.run(cost_func,feed_dict={x:x_train, y:y_train, keep_prob:1.0})
-                cost_va = sess.run(cost_func,feed_dict={x:x_valid, y:y_valid, keep_prob:1.0})
-                                
-                NN_output_tr = sess.run(aL,feed_dict={x:x_train, y:y_train, keep_prob:1.0})
-                predicted_class_tr = np.argmax(NN_output_tr, axis=1)
-                acc_tr = np.mean(predicted_class_tr == y_train)
+            permut = np.arange(n_train)
+            for epoch in range(N_epochs+1):
+                np.random.shuffle(permut) # Randomly shuffle the indices
+                x_shuffled = x_train[permut,:]
+                y_shuffled = y_train[permut]
+                for b in range(0, n_train, minibatch_size):                    #Loop over all the mini-batches:
+                    x_batch = x_shuffled[b:b+minibatch_size,:]
+                    y_batch = y_shuffled[b:b+minibatch_size]
+                    sess.run(train_op,feed_dict={X:x_batch,Y:y_batch})
                 
-                NN_output_va = sess.run(aL,feed_dict={x:x_valid, y:y_valid, keep_prob:1.0})
-                predicted_class_va = np.argmax(NN_output_va, axis=1)
-                acc_va = np.mean(predicted_class_va == y_valid)
-            
-                valid_matrix = np.zeros((nO,nO))
-                counter = np.zeros((nO,))
-                for k in range(len(y_valid)):
-                    valid_matrix[int(predicted_class_va[k]),int(y_valid[k])] += 1
-                    counter[int(y_valid[k])] += 1
-                for s in range(nO): 
-                    valid_matrix[:,s] = valid_matrix[:,s]/counter[s]
-                g = np.zeros((nO,1))
-                for s in range(nO):
-                    gs = sum(valid_matrix[s,:])
-                    if gs == 0:
-                        g[s] == 1/Cases
+                if epoch % 1 == 0:
+                    cost_tr=sess.run(loss_op,feed_dict={X:x_train,Y:y_train})
+                    cost_va=sess.run(loss_op,feed_dict={X:x_valid,Y:y_valid})
+                    NN_output_tr=sess.run(Y_hat,feed_dict={X:x_train})
+                    NN_output_va=sess.run(Y_hat,feed_dict={X:x_valid})                    
+                    if Regression == True:
+                        acc_tr = np.mean(abs(NN_output_tr - y_train) < 0.1*y_train)
+                        acc_va = np.mean(abs(NN_output_va - y_valid) < 0.1*y_valid)
                     else:
-                        g[s] = valid_matrix[s,s]/gs
-                valid_matrix = np.append(valid_matrix,g,axis=1)             
-                
-                epoch_list.append(epoch)
-                cost_training.append(cost_tr)
-                cost_valid.append(cost_va)
-                acc_training.append(acc_tr)
-                acc_valid.append(acc_va)
-                disp_list.append(valid_matrix)
-                
-                ### Update the plot of the resulting classifier: ###
-                if epoch % 50 == 0:
+                        predicted_class_tr = np.argmax(NN_output_tr, axis=1)
+                        acc_tr = np.mean(predicted_class_tr == y_train)
+                        predicted_class_va = np.argmax(NN_output_va, axis=1)
+                        acc_va = np.mean(predicted_class_va == y_valid)
+
+                    if Regression == False:
+                        valid_matrix = np.zeros((nO,nO))
+                        counter = np.zeros((nO,))
+                        for k in range(len(y_valid)):
+                            valid_matrix[int(predicted_class_va[k]),int(y_valid[k])] += 1
+                            counter[int(y_valid[k])] += 1
+                        for s in range(nO): 
+                            valid_matrix[:,s] = valid_matrix[:,s]/counter[s]
+                        g = np.zeros((nO,1))
+                        for s in range(nO):
+                            gs = sum(valid_matrix[s,:])
+                            if gs == 0:
+                                g[s] == 1/Cases
+                            else:
+                                g[s] = valid_matrix[s,s]/gs
+                        valid_matrix = np.append(valid_matrix,g,axis=1)
+                    
+                    epoch_list.append(epoch)
+                    cost_training.append(cost_tr)
+                    cost_valid.append(cost_va)
+                    acc_training.append(acc_tr)
+                    acc_valid.append(acc_va)
+                    if Regression == False: disp_list.append(valid_matrix)
+
+                if epoch % 10 == 0:
                     print( "Iteration %d:\n  Training cost %f \n  Validation cost %f\n  Training accuracy %f\n  Validating accuracy %f\n" % (epoch, cost_tr, cost_va, acc_tr, acc_va) )
-                    Display = pd.DataFrame.from_items([(YLabels[k],valid_matrix[k]) for k in range(len(YLabels))],orient='index', columns=YLabels + ['Pres.'])
-                    print(Display)
+                    if Regression == False:
+                        Display = pd.DataFrame.from_items([(YLabels[k],valid_matrix[k]) for k in range(len(YLabels))],orient='index', columns=YLabels + ['Pres.'])
+                        print(Display)
                     print(' ')
                     print(' ')
-        
+
         fig = plt.figure(1,figsize=(10,5))
         fig.subplots_adjust(hspace=.3,wspace=.3)
         plt.clf()
@@ -564,14 +557,7 @@ for t in range(len(PlotTimes)):
             
         plt.savefig('Fig_Class_'+CaseString+'.pdf')
             
-        fin_disp = np.mean(np.array(disp_list[int(0.8*len(disp_list)):]),axis=0)
-        fin_acc = np.zeros((1,Cases+1)) 
-        fin_acc[0,0] = np.mean(np.array(acc_valid[int(0.8*len(acc_valid)):]))
-        fin_disp = np.append(fin_disp,fin_acc,axis=0)
-        rows = list(YLabels)+['Acc.'] 
-        fin_Disp = pd.DataFrame.from_items([(rows[k],fin_disp[k]) for k in range(len(rows))],orient='index', columns=YLabels+['Prec.'])
-        fin_Disp.to_csv('Display_'+CaseString+'.csv')
-       	
+            
     if TDev == 0:
 
         output[0,t] = PlotTimes[t]
@@ -599,10 +585,10 @@ for t in range(len(PlotTimes)):
         #output[1,t] = np.mean(np.array(prec1[int(0.8*len(prec1)):]))
         #output[2,t] = np.mean(np.array(prec2[int(0.8*len(prec2)):]))
         #output[3,t] = np.mean(np.array(prec3[int(0.8*len(prec3)):]))
-        #output[4,t] = np.mean(np.array(acc_valid[int(0.8*len(acc_valid)):]))
+        output[4,t] = np.mean(np.array(acc_valid[int(0.8*len(acc_valid)):]))
         
         os.chdir("..")
         os.chdir("..")
         
         np.save('BinaryStats', output)	
-        pd.DataFrame(output).to_csv('BinaryStats.csv',header=None,index=None)   
+        pd.DataFrame(output).to_csv('BinaryStats.csv',header=None,index=None)

@@ -1,16 +1,17 @@
 import numpy as np
 
 ### Meta Parameters ###
-CaseString = 'ThermalStuff'     # String Associated with this run of the code
+CaseString = 'RegStuff'     # String Associated with this run of the code
 GenerateData = True             # If False, code will read in old data
-N_Samples    = 100              # Number of examples to produce for training/validating
+N_Samples    = 200              # Number of examples to produce for training/validating
+Regression = False
 
 ### Parameters of the quantum field ###
 sigma = 4.2                 # Detector Smearing
 HbarCbySig = 7.14           # Energy of Smearing = Hbar * c / sigma 
 Ksig = 7                    # Determines UV Cutoff
 a = np.pi/Ksig * sigma      # Lattice spacing induced by UV Cutoff
-LatticeLength = 100         # Determines IR Cutoff
+LatticeLength = 10         # Determines IR Cutoff
 mcc = 0.1                   # Field mass
 wD = 10                     # Detector gap
 lam = 10                    # Coupling energy     
@@ -27,9 +28,10 @@ lam = lam/E0               # Normaalized Coupling Energy
 
 ### Measurement Options ###
 dt= 0.4             # Duration of each measurement window
-Tmin = 2.8          # Start of first measurement window
+Tmin = 2.8            # Start of first measurement window
 Tmax = 3.2          # End of last measurement window
 PlotTimes = list(np.linspace(Tmin,Tmax,int((Tmax-Tmin)/dt)+1)) # Linearly spaces measurement windows
+#PlotTimes += list(np.linspace(0.8,3.2,13)) # Linearly spaces measurement windows
 PlotTimes = list(set(PlotTimes))                               # Removes duplicates
 PlotTimes.sort()                                               # Sorts list
 N_times = 10 			          # Number of measurement times considered in each window
@@ -37,7 +39,7 @@ N_tom = 10**20                    # Number of times to repeat the whole experime
 
 ### Defining Classes for Classification ###
 # Thermal Parameters
-TMean = 0.400/127             # Mean Temperature for Thermal Cases
+TMean = 1/127             # Mean Temperature for Thermal Cases
 TDev = 0.01*TMean             # Size of Temperature Bins
 
 # Bounsary Sensing Parameters
@@ -105,11 +107,9 @@ f_train = f_train/fsum
 f_valid = f_valid/fsum
 f_test  = f_test/fsum
 
-nH1 = 30                          # Number of neurons in the first hidden layer
-nH2 = 'Skip'                      # Number of neurons in the second hidden layer or 'Skip'
-dropout_prob = 0.5                # Dropout probability for training
-L2reg = 0.0001                    # L2 Regularizer
-learning_rate = 0.01              # Learning Rate
-N_epochs = 1000                    # Number of epoch to train over
-minibatch_size = 110              # Minibatch size
+nH1 = 30                         # Number of neurons in the first hidden layer
+L2reg = 0.0001                        # L2 Regularizer
+learning_rate = 0.01           # Learning Rate
+N_epochs = 1000                   # Number of epoch to train over
+minibatch_size = 100             # Minibatch size
 
