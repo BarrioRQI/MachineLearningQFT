@@ -195,10 +195,12 @@ for t in range(len(PlotTimes)):
     pd.DataFrame(PrePickedAS).to_csv('ExactTrajData_'+CaseString+'.csv',header=None,index=None)
     print('Done!')
     
-    reglist = reglist - min(reglist)
-    reglist = reglist/max(reglist)
-    reglist = 0.5*reglist
-    reglist = reglist + 0.25
+    if Regression == True:
+        reglist = reglist - min(reglist)
+        reglist = reglist/max(reglist)
+        reglist = 0.5*reglist
+        reglist = reglist + 0.25
+
     
     ############################################################################
     ##################### HELLINGER DISTANCE & log(N(1/2)) #####################
