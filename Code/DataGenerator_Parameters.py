@@ -4,7 +4,7 @@ import numpy as np
 CaseString = 'RegStuff'     # String Associated with this run of the code
 GenerateData = True             # If False, code will read in old data
 N_Samples    = 200              # Number of examples to produce for training/validating
-Regression = False
+Regression = True
 
 ### Parameters of the quantum field ###
 sigma = 4.2                 # Detector Smearing
@@ -28,7 +28,7 @@ lam = lam/E0               # Normaalized Coupling Energy
 
 ### Measurement Options ###
 dt= 0.4             # Duration of each measurement window
-Tmin = 2.8            # Start of first measurement window
+Tmin = 2.4            # Start of first measurement window
 Tmax = 3.2          # End of last measurement window
 PlotTimes = list(np.linspace(Tmin,Tmax,int((Tmax-Tmin)/dt)+1)) # Linearly spaces measurement windows
 #PlotTimes += list(np.linspace(0.8,3.2,13)) # Linearly spaces measurement windows
@@ -108,7 +108,7 @@ f_valid = f_valid/fsum
 f_test  = f_test/fsum
 
 nH1 = 30                         # Number of neurons in the first hidden layer
-L2reg = 0.0001                        # L2 Regularizer
+L2reg = 0.001                        # L2 Regularizer
 learning_rate = 0.01           # Learning Rate
 N_epochs = 1000                   # Number of epoch to train over
 minibatch_size = 100             # Minibatch size

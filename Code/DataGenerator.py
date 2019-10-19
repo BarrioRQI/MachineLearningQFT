@@ -171,8 +171,8 @@ for t in range(len(PlotTimes)):
         print('Done for case',k+1,'of',Cases,'!')
 
     ### Picking Random initial states for thermal case ###
-    if Regression == True: reglist = np.zeros((Cases*N_s,))
     if TDev != 0 and t == 1:
+        if Regression == True: reglist = np.zeros((Cases*N_s,))
         d1=RSE0List[0].shape[0]
         d2=RSE0List[0].shape[1]
         BigDSList = np.zeros((Cases*N_s,d1,d2))
@@ -195,9 +195,11 @@ for t in range(len(PlotTimes)):
     pd.DataFrame(PrePickedAS).to_csv('ExactTrajData_'+CaseString+'.csv',header=None,index=None)
     print('Done!')
     
-    if Regression == True:
-        reglist = reglist - min(reglist)
-        reglist = reglist/max(reglist)
+    if Regression == True and t == 1:
+        minr = min(reglist)
+        maxr = max(reglist)
+        reglist = reglist - minr
+        reglist = reglist/maxr
         reglist = 0.5*reglist
         reglist = reglist + 0.25
 
@@ -500,8 +502,12 @@ for t in range(len(PlotTimes)):
                     NN_output_tr=sess.run(Y_hat,feed_dict={X:x_train})
                     NN_output_va=sess.run(Y_hat,feed_dict={X:x_valid})                    
                     if Regression == True:
-                        acc_tr = np.mean(abs(NN_output_tr - y_train) < 0.1*y_train)
-                        acc_va = np.mean(abs(NN_output_va - y_valid) < 0.1*y_valid)
+                        temphat_tr = (NN_output_tr-1/4)*2*(maxr-minr)+minr
+                        temphat_va = (NN_output_va-1/4)*2*(maxr-minr)+minr
+                        temp_tr = (y_train-1/4)*2*(maxr-minr)+minr
+                        temp_va = (y_valid-1/4)*2*(maxr-minr)+minr
+                        acc_tr = np.mean(abs(temphat_tr - temp_tr) < 0.01*temp_tr)
+                        acc_va = np.mean(abs(temphat_va - temp_va) < 0.01*temp_va)
                     else:
                         predicted_class_tr = np.argmax(NN_output_tr, axis=1)
                         acc_tr = np.mean(predicted_class_tr == y_train)
