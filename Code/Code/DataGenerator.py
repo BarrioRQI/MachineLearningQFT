@@ -199,7 +199,7 @@ for t in range(len(PlotTimes)):
         minr = min(reglist)
         maxr = max(reglist)
         reglist = reglist - minr
-        reglist = reglist/maxr
+        reglist = reglist/(maxr-minr)
         reglist = 0.5*reglist
         reglist = reglist + 0.25
 
