@@ -135,7 +135,7 @@ for t in range(len(PlotTimes)):
     RSE0List = [0]*Cases                                   # List of probe-environment initial states
     for k in range(Cases):
         RE0 = u.ThermalState(Hlist_thermal[k],TempList[k]) # Compute the environment's thermal state
-        if B == 3:                                         # In the signaling case
+        if Blist[k] == 3:                                         # In the signaling case
             RE0[0,0]= Gsignal                              # Squeeze the last oscillator
             RE0[0,LatLen]= 0                               
             RE0[LatLen,0]= 0

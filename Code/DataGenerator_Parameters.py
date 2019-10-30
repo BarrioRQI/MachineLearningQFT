@@ -1,7 +1,7 @@
 import numpy as np
 
 ### Meta Parameters ###
-CaseString = 'RegStuff'     # String Associated with this run of the code
+CaseString = 'NewStuff'     # String Associated with this run of the code
 GenerateData = True             # If False, code will read in old data
 N_Samples    = 200              # Number of examples to produce for training/validating
 Regression = True
