@@ -1,12 +1,13 @@
+#! /usr/bin/python
 import numpy as np
 from math import floor
-from numpy.linalg import inv
+from numpy.linalg import inv, eig
+from numpy.linalg.linalg import det
 from scipy.linalg import expm, sqrtm, tanhm
 
 ###############################################################################
 ############################# DEFINITIONS #####################################
 ###############################################################################
-
 #Order of appearance in datagenerator
 
 def InitializeProbeState(State='Ground'):
@@ -22,14 +23,11 @@ def InitializeProbeState(State='Ground'):
 
 def ComputeHams(wD,mcc,lam,LatLen,sigma,B,D):
     N_Env = LatLen
-    #print('Defining Probe Local Hamiltonian')
     HS = wD * np.eye(2)     #In gaussian we define F with H = 1/2 R F R^T
-    #print('Defining Environment Local Hamiltonian')
     HE0 = np.zeros((2*N_Env,2*N_Env))
     HE0[0:N_Env,0:N_Env] = (mcc+2/mcc) * np.eye(N_Env)
     HE0[N_Env:2*N_Env,N_Env:2*N_Env] = mcc * np.eye(N_Env)
         
-    #print('Defining Environment Internal Hamiltonian for Bulk')
     AdjBulk = SquareLatticeAdjList(LatLen)
     HEint = (1/mcc) * EnvIntHam(AdjBulk)
     
@@ -47,7 +45,6 @@ def ComputeHams(wD,mcc,lam,LatLen,sigma,B,D):
         HEint[1,0] = 0        
         HE_thermal = HE0 + HEint
     
-    #print('Defining Probe - Environment Hamiltonian')
     if D > LatLen: print('Error: D too large')
 
     HSA  = lam * SetupSAHam(D,sigma,N_Env)       # Define the system ancilla coupling    
@@ -159,14 +156,10 @@ def DefProjList(Ham,N_t,Tmin,Tmax):
     
     Ulist = np.zeros((N_t,dim,dim)) # Initialize a list of unitaries
     UAdlist = np.zeros((N_t,dim,dim)) # Initialize a list of unitaries
-#    print('Ham',Ham)
-#    print('multOmega(Ham)',multOmega(Ham))
-#    print('np.asarray(multOmega(Ham)*dT)',np.asarray(multOmega(Ham)*dT))
     
     Ustep = expm(np.asarray(multOmega(Ham)*dT))
     Ulist[0] = expm(np.asarray(multOmega(Ham)*Tmin))
-#   Ustep = Sexp(Ham,dT)
-#   Ulist[0] = Sexp(Ham,Tmin)           # Compute initial unitary
+
     UAdlist[0] = np.transpose(Ulist[0])
     for k in range(1,N_t):
         Ulist[k] = Ustep @ Ulist[k-1]
@@ -200,12 +193,6 @@ def Sexp(Ham,t,K=1000):
     P = np.zeros(Ham.shape)
     P[m:2*m,m:2*m] = Ham[m:2*m,m:2*m]
     P = multOmega(P)
-
-#    w = abs(Ham[0,0])
-#    g = abs(Ham[0,1])
-#    mp = 10**(-20)
-#    K=1+int(((w+g)**5 * t**5/mp)**(1/4.5))
-#    print(K)
     
     U = np.eye(2*m)
     dQ = Q*t/K
@@ -261,12 +248,15 @@ def ThermalState(F,T):
     if T != 0:
         beta = 1/T
         arg = beta * w * SqrtM / 2
-        if arg[0,0] > 7:
+
+        if arg[0,0] > 10:
+            #print('greg')
             coth = np.eye(m)
             coth += 2*expm(-2*arg)
             coth += 2*expm(-4*arg)
         else:
             coth = inv(tanhm(arg))
+        
         Coth = np.eye(2*m)
         Coth[0:m, 0:m] = coth
         Coth[m:2*m,m:2*m] = coth
@@ -287,7 +277,7 @@ def ComputeHellinger(dmu,sig1,sig2,N_tom):
 
     return Hellinger, N_half
 
-def Tomography(a,N_tom,Med):
+def Tomography(a, N_tom, Med):
     if N_tom == 'Infinity':
         return a    
     N_tom = float(N_tom)
@@ -317,20 +307,14 @@ def RTemp(TMean,TDev,TDist='Uniform'):
     return T
     
 def PCA(X=np.array([])):
-    print('Performing PCA on Data')
     (n, d) = X.shape                                  # Determine data shape
 
-    print('Computing Mean and Covariance Matrix')
     Xm = np.mean(X, 0).real                           # Compute the mean of each colum
     X0  = X - np.tile(Xm, (n, 1))                     # Subtract off mean from each row
     Cov = np.dot(X0.T, X0)/(n-1)
-    print('Done!')
 
-    print('Computing Eigensystem')
     (lam, M) = np.linalg.eig(Cov)  # Compute eigensystem
-    print('Done!')
     
-    # Taking real parts and sorting
     lam = lam.real               
     M = M.real    
     idx = lam.argsort()[::-1]       
@@ -355,3 +339,186 @@ def PCA_Compress(lam,VarKeep):
             break
     dim_c += 1
     return dim_c
+
+######################################################################################
+# ------------------------ Fock and PAC state sensing utils ------------------------ #
+
+fock_moments = np.array([
+    [1, 1/2, 3  /4,   15/8,   105/16], 
+    [1, 3/2, 15 /4,  105/8,   945/16], 
+    [1, 5/2, 39 /4,  375/8,  4305/16], 
+    [1, 7/2, 75 /4,  945/8, 13545/16], 
+    [1, 9/2, 123/4, 1935/8, 33705/16]
+])
+
+pac_moments = np.array([
+    [1, 1/2, 3  /4,   15/8,   105/16], 
+    [1, 3/2, 21 /4,  215/8,  2835/16], 
+    [1, 5/2, 51 /4,  715/8, 12425/16], 
+    [1, 7/2, 93 /4, 1635/8, 34755/16], 
+    [1, 9/2, 147/4, 3095/8, 77385/16]
+])
+
+def get_fock_moment(n, m):
+    return fock_moments[n, m]
+
+def get_pac_moment(n, m):
+    return pac_moments[n, m]
+
+def generate_u_v(F, wD, L, t):
+    l = len(F)
+    m = len(F)*2 + 2 # DO NOT FIX
+
+    u = np.zeros((m, 1))
+    u[0] = np.cos(wD*t)
+    u[l+1] = np.sin(wD*t)
+
+    v = np.zeros((m, 1))
+    for n in range(len(F)):
+        w = (n+1)*np.pi/L
+        v[n+1] = F[n]*np.cos(w*t)/np.sqrt(w)
+        v[n + l + 2] = F[n]*np.sin(w*t)*np.sqrt(w)
+
+    return u, v
+
+def generate_S_exp(sigma, L, wD, t, lam, N_cutoff, inv=True):
+    F = get_sine_gaussian_fourier_coefficients(sigma, L, N_cutoff)
+    u, v = generate_u_v(F, wD, L, t)
+    
+    M = u*np.transpose(v) + v*np.transpose(u)
+    M = multOmega(M)
+
+    if inv:
+        S = np.eye(len(M)) - lam*M
+    else:
+        S = np.eye(len(M)) + lam*M
+
+    return S
+
+def generate_two_delta_time_evolve_S(sigma, L, wD, t1, t2, lam, N_cutoff, inv=True):
+    assert(t2 > t1)
+    S1 = generate_S_exp(sigma, L, wD, t1, lam, N_cutoff, inv)
+    S2 = generate_S_exp(sigma, L, wD, t2, lam, N_cutoff, inv)
+
+    assert(np.isclose(det(S1), 1, 7))
+    assert(np.isclose(det(S2), 1, 7))
+
+    if inv:
+        return S1 @ S2
+    else:
+        return S2 @ S1
+
+from scipy.special import erf
+
+def get_sine_gaussian_fourier_coefficients(sigma, L, N):
+    # should be calculated with Mathematica, if calculated with Numpy would be an approximation
+    # since we are doing a simulation, everything is exact until measurement noise is introduced
+    F = np.zeros(N)
+    b = np.pi*sigma/(np.sqrt(2)*L)
+    a = L/(np.sqrt(8)*sigma)
+
+    for n in range(1,N+1,2):
+        F[n-1] = ((-1)**((n-1)//2))*np.exp(-(n*b)**2)*((erf(complex(a, -n*b)) + erf(complex(a, n*b))).real)/np.sqrt(2*L)
+
+    return F
+
+def get_cosine_gaussian_fourier_coefficients(sigma, L, N):
+    # should be calculated with Mathematica, if calculated with Numpy would be an approximation
+    # since we are doing a simulation, everything is exact until measurement noise is introduced
+
+    F = np.zeros(N)
+    b = np.pi*sigma/(np.sqrt(2)*L)
+    a = L/(np.sqrt(8)*sigma)
+
+    for n in range(2,N,2):
+        F[n] = ((-1)**(n//2))*np.exp(-(n*b)**2)*((erf(complex(a, -n*b)) + erf(complex(a, n*b))).real)/np.sqrt(2*L)
+
+    F[0] = erf(a)/np.sqrt(2*L)
+    return F
+
+def generate_moment(N, M, state, quadrature, t1, t2, lam, N_cutoff, sigma, L, wD):
+    # N = avg number of excitations in lowest mode
+    # M = moment
+    # quadrature = vector picking out quadrature of interest, should be unit vector 
+    # N_cutoff is number of modes of the field considered
+    
+    S = generate_two_delta_time_evolve_S(sigma, L, wD, t1, t2, lam, N_cutoff, inv=True)
+
+    Q = (S.T) @ quadrature
+
+    assert(np.any(np.isnan(Q)) == False)
+
+    l = Q.shape[0]
+    m = 0
+    T2 = get_fock_moment(0, 1)*np.ones(l)
+    T4 = get_fock_moment(0, 2)*np.ones(l)
+    T6 = get_fock_moment(0, 3)*np.ones(l)
+    T8 = get_fock_moment(0, 4)*np.ones(l)
+    Q = Q.flatten()
+    QP = np.zeros(Q.shape[1])
+    QP[:] = Q[:]
+    Q = QP
+
+    first_mode_moments = []
+    for i in range(4):
+        first_mode_moments.append(get_fock_moment(N, i+1) if state == 'fock' else get_pac_moment(N, i+1))
+
+    for i, T in enumerate([T2, T4, T6, T8]):
+        T[1] = first_mode_moments[i]
+        T[l//2 + 1] = first_mode_moments[i]
+
+    Q2 = np.square(Q)
+    Q4 = np.square(Q2)
+    Q6 = Q4*Q2
+    Q8 = np.square(Q4)
+
+    if M == 2:
+        m += np.sum(Q2 * T2)
+
+    if M == 4:
+        m += np.sum(Q4 * (T4 - 6*np.square(T2))) + 6*np.sum(Q2 * T2)**2
+
+    if M == 8:
+        #A1 = np.sum(Q8*T8)
+        #A2 = np.sum(Q4*T4)**2 - np.sum(Q8*T4*T4)
+        #A3 = np.sum(Q4*T4)*(np.sum(Q2*T2)**2) - np.sum(Q4*T4)*np.sum(Q4*T2*T2) \
+        #    - 2*np.sum(Q6*T4*T2)*np.sum(Q2*T2) + 2*np.sum(Q8*T4*T2*T2)
+        #A4 = np.sum(Q2*T2)**4 - 6*np.sum(Q4*T2*T2)*(np.sum(Q2*T2)**2) + 3*np.sum(Q4*T2*T2)**2 \
+        #    + 8*np.sum(Q6*T2*T2*T2)*np.sum(Q2*T2) - 6*np.sum(Q8*T2*T2*T2*T2)
+        #A5 = np.sum(Q6*T6)*np.sum(Q2*T2) - np.sum(Q8*T6*T2)
+
+        #m += A1 + 35*A2 + 210*A3 + 105*A4 + 28*A5
+
+        m = 0
+        m += np.sum(Q8 * (T8 - 28*T6*T2 - 35*T4*T4 + 420*T4*T2*T2 - 630*T2*T2*T2*T2))
+        m += np.sum(Q6 * (28*T6 - 420*T4*T2 + 840*T2*T2*T2))*np.sum(Q2 * T2)
+        m += np.sum(Q4 * T4)*np.sum(Q4 * (35*T4 - 210*T2*T2 ))
+        m += (np.sum(Q2 * T2)**2)*np.sum(Q4 * (210*T4 - 630*T2*T2))
+        m += 105*(np.sum(Q2 * T2)**4 + 3*(np.sum(Q4*T2*T2)**2))
+
+    assert(np.isnan(m) == False)
+
+    return m
+
+def get_quadrature(a, b, N_cutoff):
+    # return the 
+    q = np.zeros((2*N_cutoff + 2, 1))
+    assert(np.isclose(a**2 + b**2, 1, 6))
+    q[0] = a
+    q[N_cutoff + 1] = b
+
+    return q
+
+def moment_Tomography(a, a_p, N_tom):
+    # add tomographic noise to an even moment for large N_tom
+    # a = value Nth even moment
+    # a_p = value of 2Nth moment
+    if N_tom == 'Infinity':
+        return a    
+    N_tom = float(N_tom)
+    
+    r = []
+    for t in range(len(a)):
+        a_tom = a[t]+np.sqrt((a_p[t] - (a[t])**2)/N_tom)*np.random.randn()
+        r.append(a_tom)
+    return r
