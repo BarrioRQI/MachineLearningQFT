@@ -303,11 +303,11 @@ for t in range(len(PlotTimes)):
                             aS[n,r] += aS1[n,r]
                             aS[n,r] += np.trace(ProjList[c][n,r] @ dS).real                         
                     aS = np.array(aS).flatten().real
-                    if Regression == True: extrainfo = np.array([reglist[c*N_s+s]])
+                    if Regression == True: 
+                        extrainfo = np.array([reglist[c*N_s+s]])
                     
                 aS_tom = u.Tomography(aS,N_tom,MedAS)                            # Add tomographic noise
-                print(extrainfo)
-                print(len(aS_tom))
+
                 ExpData0[c,s] = np.concatenate((aS_tom,extrainfo), axis=None)
                 ExpData[c*N_s+s] = np.concatenate((aS_tom,extrainfo), axis=None) # Save this trajectory        
                 if N_s < 20:
@@ -326,8 +326,7 @@ for t in range(len(PlotTimes)):
         os.chdir("..")
         
         #print(mycwd)
-    print(ExpData)
-    print(ExpData.shape)
+
     ############################################################################
     ################################ RUN PCA ON DATA ###########################
     ############################################################################
@@ -421,6 +420,8 @@ for t in range(len(PlotTimes)):
     ##################### PROCESSING DATA FOR N.N. #############################
     ############################################################################
 
+    print(PCAdData)
+
     if RunNNonData == True:
         #print('Processing Data for Neural Network Training')
         if RunPCAonData == False:
@@ -445,6 +446,9 @@ for t in range(len(PlotTimes)):
         y_valid = PCAdData[n_train:n_train+n_valid,-1:].flatten()
         y_test  = PCAdData[n_train+n_valid:,-1:].flatten()    
         
+        print(x_test)
+        print(y_test)
+
         #print('Done!')
         
         ############################################################################

@@ -1,0 +1,31 @@
+#!/bin/bash
+#SBATCH --job-name="QFT_ML_Thermomentry"
+#SBATCH --partition=cpu_mosaic_low
+#SBATCH --time=01:00:05
+#SBATCH --mem=64GB
+#SBATCH --mail-user=bcimring@uwaterloo.ca
+#SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --chdir="/work/bcimring/barrio"
+### %x for job-name, and %j for job-id
+#SBATCH --output=%x-%j.out
+#SBATCH --error=%x-%j.err
+
+echo "Starting sequential job"
+hostname
+date
+
+# The actual job that should be run
+
+echo "Starting:"
+
+module load anaconda/3.2020.02
+conda activate MLQFT
+
+python3 /work/bcimring/barrio/MachineLearningQFT/Code/DataGenerator.py
+
+echo " "
+echo " "
+
+# We're done!
+echo "Done."
+date

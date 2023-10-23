@@ -3,18 +3,18 @@ import numpy as np
 from scipy.constants import c, hbar, elementary_charge, Boltzmann
 
 ### Meta Parameters ###
-TMean = '350_uK_FINAL'
+TMean = '350_uK_TEST'
 CaseString = 'TEST'+str(TMean)         # String Associated with this run of the code
 GenerateData = True             # If False, code will read in old data
-N_Samples    = 30              # Number of examples to produce for training/validating
-Regression = False
+N_Samples    = 10              # Number of examples to produce for training/validating
+Regression = True
 
 ### Parameters of the quantum field ###
-sigma = 42e-3                 # Detector Smearing [m]
+sigma = 42-3                 # Detector Smearing [m]
 
 Ksig = 7/sigma                    # Determines UV Cutoff [m^-1]
 a = np.pi/Ksig      # Lattice spacing induced by UV Cutoff [m]
-LatticeLength = 100         # Determines IR Cutoff [a]
+LatticeLength = 10         # Determines IR Cutoff [a]
 mcc = (1e8)*(1.054*1e-34)/(1.6*1e-19)                     # Field mass [eV]
 wD = (1e10)*(1.054*1e-34)/(1.6*1e-19)                    # Detector gap [eV]
 lam = (1e10)*(1.054*1e-34)/(1.6*1e-19)                   # Coupling energy [eV]
@@ -31,23 +31,26 @@ lam = lam/E0               # Normalized Coupling Energy
 
 
 ### Measurement Options ###
-dt= 10*1e-12             # Duration of each measurement window [s]
-Tmin = 0*150*1e-12           # Start of first measurement window   [s]
+dt= 50*1e-12             # Duration of each measurement window [s]
+Tmin = 150*1e-12           # Start of first measurement window   [s]
 Tmax = 200*1e-12      # End of last measurement window      [s]
 
 # convert to units k_b = hbar = c = a = 1
 Tmin *= c/a
 Tmax *= c/a
 dt *= c/a
+
 print(sigma, mcc, wD, lam, a)
 
 print(Tmin, Tmax, dt)
+
+print(wD, sigma, mcc, lam, LatticeLength, Tmin, Tmax, TMean)
 
 PlotTimes = list(np.linspace(Tmin,Tmax,int((Tmax-Tmin)/dt)+1)) # Linearly spaces measurement windows
 #PlotTimes += list(np.linspace(0.8,3.2,13)) # Linearly spaces measurement windows
 PlotTimes = list(set(PlotTimes))                               # Removes duplicates
 PlotTimes.sort()                                               # Sorts list
-N_times = 3 			          # Number of measurement times considered in each window
+N_times = 10 			          # Number of measurement times considered in each window
 N_tom = 1e20                    # Number of times to repeat the whole experiment
 
 ### Defining Classes for Classification ###
@@ -64,15 +67,15 @@ LPYD = np.array([
         ['Full Bond',  'Uncut',      0,   1,               1,         LatticeLength,            0],
         ['No Bond'  ,  'Cut'  ,      0,   2,               2,         LatticeLength,            0],
         ['Signal'   ,  'Sign' ,      0,   3,               3,         LatticeLength,            0],
-        ['89-91%'   ,  '0.9'  ,      0,   0,               1,  int(LatticeLength/2),   0.90*TMean],
-        ['91-93%'   ,  '0.92' ,      0,   1,               1,  int(LatticeLength/2),   0.92*TMean],
-        ['93-95%'   ,  '0.94' ,      0,   2,               1,  int(LatticeLength/2),   0.94*TMean],
-        ['95-97%'   ,  '0.96' ,      0,   3,               1,  int(LatticeLength/2),   0.96*TMean],
-        ['97-99%'   ,  '0.98' ,      0,   4,               1,  int(LatticeLength/2),   0.98*TMean],
-        ['99-101%'  ,  '1.00' ,      0,   5,               1,  int(LatticeLength/2),   1.00*TMean],
-        ['101-103%' ,  '1.02' ,      0,   6,               1,  int(LatticeLength/2),   1.02*TMean],
-        ['103-105%' ,  '1.04' ,      0,   7,               1,  int(LatticeLength/2),   1.04*TMean],
-        ['105-107%' ,  '1.06' ,      0,   8,               1,  int(LatticeLength/2),   1.06*TMean],
+        ['89-91%'   ,  '0.9'  ,      1,   0,               1,  int(LatticeLength/2),   0.90*TMean],
+        ['91-93%'   ,  '0.92' ,      1,   1,               1,  int(LatticeLength/2),   0.92*TMean],
+        ['93-95%'   ,  '0.94' ,      1,   2,               1,  int(LatticeLength/2),   0.94*TMean],
+        ['95-97%'   ,  '0.96' ,      1,   3,               1,  int(LatticeLength/2),   0.96*TMean],
+        ['97-99%'   ,  '0.98' ,      1,   4,               1,  int(LatticeLength/2),   0.98*TMean],
+        ['99-101%'  ,  '1.00' ,      1,   5,               1,  int(LatticeLength/2),   1.00*TMean],
+        ['101-103%' ,  '1.02' ,      1,   6,               1,  int(LatticeLength/2),   1.02*TMean],
+        ['103-105%' ,  '1.04' ,      1,   7,               1,  int(LatticeLength/2),   1.04*TMean],
+        ['105-107%' ,  '1.06' ,      1,   8,               1,  int(LatticeLength/2),   1.06*TMean],
         ['107-109%' ,  '1.08' ,      1,   9,               1,  int(LatticeLength/2),   1.08*TMean],
         ['109-111%' ,  '1.10' ,      1,  10,               1,  int(LatticeLength/2),   1.10*TMean]
         ])
