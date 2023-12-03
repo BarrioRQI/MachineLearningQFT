@@ -6,7 +6,7 @@ import utils.statistical as stat
 def get_probe_trajectories(
     Flist_dynamic,
     Flist_thermal,
-    latlen,
+    LatLenList,
     Blist,
     TempList,
     TDev,
@@ -26,7 +26,7 @@ def get_probe_trajectories(
     
     print('Calculating states')
 
-    probe_state_0= d.InitializeProbeState('Ground')
+    probe_state_0 = d.InitializeProbeState('Ground')
     state_list_0 = [0]*cases                                   # List of probe-environment initial states
     for k in range(cases):
         # below is setup dependent
@@ -35,9 +35,9 @@ def get_probe_trajectories(
         
         if Blist[k] == 3:                                         # In the signaling case
             phi_state_0[0,0]= Gsignal                              # Squeeze the last oscillator
-            phi_state_0[0,latlen]= 0
-            phi_state_0[latlen,0]= 0
-            phi_state_0[latlen,latlen]= 1/Gsignal
+            phi_state_0[0,LatLenList[k]]= 0
+            phi_state_0[LatLenList[k],0]= 0
+            phi_state_0[LatLenList[k],LatLenList[k]]= 1/Gsignal
         state_list_0[k] = d.directsum(phi_state_0,probe_state_0)                 # Compute the initial probe-environment state
     median_state_0 = np.median(state_list_0,axis=0)                   # Compute the median probe-environment stat
 

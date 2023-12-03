@@ -199,14 +199,19 @@ def moment_Tomography(a, a_p, N_tom):
 def get_symplectic_generator(wD,m,lambda_,lattice_length,sigma,B,D,dim=1,smearing='gaussian',cutoff='none',eps=None):
     N_lat = int(lattice_length)
     FD = wD*np.eye(2)
-    F0_uncoupled = np.zeros((2*N_lat,2*N_lat))
-    F0_uncoupled[0:N_lat,0:N_lat] = (m+(2/m if m != 0 else 2)) * np.eye(N_lat)
-    F0_uncoupled[N_lat:2*N_lat,N_lat:2*N_lat] = m*np.eye(N_lat)
- 
-    F0_adjacency_list = SquareLatticeAdjList(lattice_length, dim)
+    size=2*(N_lat**dim)
+    F0_uncoupled = np.zeros((size,size))
+    F0_uncoupled[0:size//2,0:size//2] = (m+(2*dim/m if m != 0 else 2*dim)) * np.eye(size//2)
+    F0_uncoupled[size//2:size,size//2:size] = m*np.eye(size//2)
+    
+    include_periodic = False 
+    if B==4:
+        include_periodic = True
+    print(include_periodic) 
+    F0_adjacency_list = SquareLatticeAdjList(lattice_length, dim, IncludePeriodic=include_periodic)
     F0_adjacent_int = ((1/m) if m != 0 else 1)* Fint_unitless(F0_adjacency_list)
     
-    if B == 1:
+    if B == 1 or B == 4:
         F0_dynamic = F0_uncoupled + F0_adjacent_int
         F0_thermal = F0_uncoupled + F0_adjacent_int
     elif B == 2:
@@ -218,11 +223,6 @@ def get_symplectic_generator(wD,m,lambda_,lattice_length,sigma,B,D,dim=1,smearin
         F0_dynamic = F0_uncoupled + F0_adjacent_int
         F0_adjacent_int[0,1] = 0
         F0_adjacent_int[1,0] = 0
-        F0_thermal = F0_uncoupled + F0_adjacent_int
-    elif B == 4:
-        F0_adjacent_int[0,lattice_length-1] = F0_adjacent_int[0,1]
-        F0_adjacent_int[lattice_length-1,0] = F0_adjacent_int[1,0]
-        F0_dynamic = F0_uncoupled + F0_adjacent_int
         F0_thermal = F0_uncoupled + F0_adjacent_int
 
     if D > lattice_length: print('Error: D too large')
@@ -315,8 +315,8 @@ def get_Fint(n_A, sigma, N_lat, eps=None, wD=None, smearing='gaussian',cutoff='n
         if dim == 1:
             del_r = x - n_A
         elif dim == 2:
-            del_y = x//N_lat
-            del_x = x%N_lat
+            del_y = x//N_lat - n_A
+            del_x = x%N_lat - n_A
             del_r = np.sqrt(del_x**2 + del_y**2)
         
         if cutoff == 'none':
@@ -326,8 +326,8 @@ def get_Fint(n_A, sigma, N_lat, eps=None, wD=None, smearing='gaussian',cutoff='n
         #    weight = get_IFT(F_times_C, x - n_A, (sigma, eps, wD, F, C))
         #    weight = weight.real
 
-        Fint[N_lat,x] = weight
-        Fint[x,N_lat]  = weight
+        Fint[N_lat**dim,x] = weight
+        Fint[x,N_lat**dim]  = weight
 
     return Fint
 ### Picks which coupling case and constructs the total Hamiltonian ###
@@ -443,7 +443,7 @@ def ThermalState(F,T):
     Tt=Tt/w
     if np.allclose(Tt, np.eye(Tt.shape[0])) == False:
         print('Error: T is not identity')
-    SqrtM = sqrtm(V);
+    SqrtM = np.real(sqrtm(V));
     SqrtMinv = inv(SqrtM);
     
     sigma = np.eye(2*m);

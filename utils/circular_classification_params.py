@@ -3,22 +3,34 @@ import numpy as np
 from scipy.constants import c, hbar, elementary_charge, Boltzmann
 
 ### Meta Parameters ###
-#experiment_name = "test2"
-experiment_name = "circular_boundary_classification_run2_T=0_L=100_sig=18e_3"
 n_samples    = 10000              # Number of examples to produce for training/validating
 Regression = False
 overwrite = False
 
-### Parameters of the quantum field ###
-### Parameters of the quantum field ###
+### Parameters of the quantum field in 1D ###
+experiment_name = "circular_boundary_classification_sigma=1e-5"
+#experiment_name = "2D_geometry_classification_run2"
 sigma = 18e-3                 # Detector Smearing [m]
 Ksig = 16/sigma                    # Determines UV Cutoff [m^-1]
+sigma = 1e-5                 # Detector Smearing [m]
 a = np.pi/Ksig      # Lattice spacing induced by UV Cutoff [m]
 latlen = 100         # Determines IR Cutoff [a]
+latlen2d = 25         # Determines IR Cutoff [a]
 mcc = 0.1*1e9*hbar                     # Field mass [eV]
 wD = 10*1e9*hbar                    # Detector gap [eV]
 lam = 10*1e9*hbar                   # Coupling energy [eV]
 Tmean = 0*1e-6
+
+### Parameters of the quantum field in 2D ###
+#experiment_name = "2D_geometry_classification"
+#sigma2d = 10e-6                 # Detector Smearing [m]
+#Ksig2d = 5/sigma                    # Determines UV Cutoff [m^-1]
+#a2d = np.pi/Ksig      # Lattice spacing induced by UV Cutoff [m]
+#latlen2d = 25         # Determines IR Cutoff [a]
+#mcc2d = 0.1*1e9*hbar                     # Field mass [eV]
+#wD2d = 0.1*1e9*hbar                    # Detector gap [eV]
+#lam2d = 10*1e9*hbar                   # Coupling energy [eV]
+#Tmean2d = 0*1e-3
 
 
 ### Units used are hbar = c = a = 1 ###
@@ -26,6 +38,7 @@ E0 = hbar*c/a   # Energy unit
 Temp0 = a*Boltzmann/(hbar*c)   # Energy unit
 L0 = a   # Energy unit
 T0 = a/c   # Energy unit
+
 
 ### Unitless Parameters ###
 sigma = sigma/L0            # Normalized Smearing
@@ -35,22 +48,21 @@ lam = lam/E0               # Normalized Coupling Energy
 Tmean = Tmean/Temp0  # convert to hbar = c = a = k_b = 1 units
 Tdev = 0*Tmean             # Size of Temperature range
 
+print(sigma, mcc, wD, lam, Tmean, a, a/c, a*latlen/c)
 
 ### Measurement Options ###
-dt = 1e-20             # Duration of each measurement window [s]
-time_min = -20           # Start of first measurement window   [s]
-time_max = -12      # End of last measurement window      [s]
+time_min = -16           # Start of first measurement window   [s]
+time_max = -9      # End of last measurement window      [s]
 
 
-plot_times_max = np.linspace(5e-16,1e-14,100,endpoint=True) # Linearly spaces measurement windows
+plot_times_max = np.logspace(time_min, time_max, 8, endpoint=True) # Linearly spaces measurement windows
 plot_times_max = plot_times_max/T0
-dt = plot_times_max[0]
-plot_times_min = plot_times_max - dt # Linearly spaces measurement windows
+plot_times_min = plot_times_max*plot_times_max[0]/plot_times_max[1]
+plot_times_min[0]=0
 
 print(plot_times_max)
 
-
-measurements_per_window = 10 			          # Number of measurement times considered in each window
+measurements_per_window = 10    # Number of measurement times considered in each window
 n_tom = 1e22                    # Number of times to repeat the whole experiment
 
 ### Defining Classes for Classification ###
@@ -59,12 +71,15 @@ TDev = 0             # Size of Temperature range
                                              
 ### Setting Active Cases (Label, Probability, Y-label, Details) ###
 LPYD = np.array([
-        ['Case Name',  'Abv'  , 'Prob', 'y', 'Boundary Type','Distance to Boundary','Temperature', 'Smearing', 'Dim'],
-        ['Linear end', 'LinEnd',     0,   0,               1,         latlen,               Tmean, 'gaussian',     1],
-        ['Linear mid', 'LinMin',     0,   0,               1,  int(latlen/2),               Tmean, 'gaussian',     1],
-        ['Circular',   'Cir'  ,      0,   1,               4,  int(latlen/2),               Tmean, 'gaussian',     1],
-        ['2D_rect',    '2DR',        1,   0,               1,  int(latlen/2),               Tmean, 'gaussian',     2],
-        ['2D_torus',   '2DT',        1,   1,               1,  int(latlen/2),               Tmean, 'gaussian',     2]
+        ['Case Name',  'Abv'  , 'Prob', 'y', 'Boundary Type','Distance to Boundary','Temperature', 'Smearing', 'Dim', 'Lattice Length'],
+        ['Linear end', 'LinEnd',     0,   0,               1,         latlen,               Tmean, 'gaussian',     1, latlen],
+        ['Linear mid', 'LinMin',     1,   0,               1,    latlen//2+1,               Tmean, 'gaussian',     1, latlen],
+        ['Circular',   'Cir'  ,      1,   1,               4,    latlen//2+1,               Tmean, 'gaussian',     1, latlen],
+        ['2D_rect',    '2DR',        0,   0,               1,    latlen2d//2+1,               Tmean, 'gaussian',     2, latlen2d],
+        ['2D_torus',   '2DT',        0,   1,               4,    latlen2d//2+1,               Tmean, 'gaussian',     2, latlen2d],
+        ['Linear mid', 'LinMin',     0,   0,               1,    latlen//2+1,               Tmean, 'gaussian',     1, latlen],
+        ['Linear mid', 'LinMin',     0,   1,               1,    (latlen+2)//2+1,           Tmean, 'gaussian',     1, latlen+2]
+
         ])
 
 ### PCA Options ###
@@ -82,8 +97,9 @@ f_train = f_train/fsum
 f_valid = f_valid/fsum
 f_test  = f_test/fsum
 
-nH1 = 30                         # Number of neurons in the first hidden layer
-L2reg = 0.001                    # L2 Regularizer
-learning_rate = 0.01             # Learning Rate
-n_epochs = 25                  # Number of epoch to train over
-minibatch_size = 100             # Minibatch size
+nH1 = 4                         # Number of neurons in the first hidden layer
+hidden_layer = False                         # Number of neurons in the first hidden layer
+L2reg = 0.01                    # L2 Regularizer
+learning_rate = 1e-1             # Learning Rate
+n_epochs = 6                  # Number of epoch to train over
+minibatch_size = 256             # Minibatch size

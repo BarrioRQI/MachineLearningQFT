@@ -62,19 +62,19 @@ Gsignal = 3.5143             # Squeezing of the "signal oscillator" 8db -> r = 1
 LPYD = np.array([
         ['Case Name',  'Abv'  , 'Prob', 'y', 'Boundary Type','Distance to Boundary','Temperature', 'Smearing', 'Dim'],
         ['Full Bond',  'Uncut',      0,   1,               1,         latlen,            0, 'gaussian', 1],
-        ['No Bond'  ,  'Cut'  ,      1,   2,               2,         latlen,            0, 'gaussian' 1],
-        ['Signal'   ,  'Sign' ,      1,   3,               3,         latlen,            0, 'gaussian' 1],
-        ['89-91%'   ,  '0.9'  ,      0,   0,               1,  int(latlen/2),   0.90*TMean, 'gaussian' 1],
-        ['91-93%'   ,  '0.92' ,      0,   1,               1,  int(latlen/2),   0.92*TMean, 'gaussian' 1],
-        ['93-95%'   ,  '0.94' ,      0,   2,               1,  int(latlen/2),   0.94*TMean, 'gaussian' 1],
-        ['95-97%'   ,  '0.96' ,      0,   3,               1,  int(latlen/2),   0.96*TMean, 'gaussian' 1],
-        ['97-99%'   ,  '0.98' ,      0,   4,               1,  int(latlen/2),   0.98*TMean, 'gaussian' 1],
-        ['99-101%'  ,  '1.00' ,      0,   5,               1,  int(latlen/2),   1.00*TMean, 'gaussian' 1],
-        ['101-103%' ,  '1.02' ,      0,   6,               1,  int(latlen/2),   1.02*TMean, 'gaussian' 1],
-        ['103-105%' ,  '1.04' ,      0,   7,               1,  int(latlen/2),   1.04*TMean, 'gaussian' 1],
-        ['105-107%' ,  '1.06' ,      0,   8,               1,  int(latlen/2),   1.06*TMean, 'gaussian' 1],
-        ['107-109%' ,  '1.08' ,      0,   9,               1,  int(latlen/2),   1.08*TMean, 'gaussian' 1],
-        ['109-111%' ,  '1.10' ,      0,  10,               1,  int(latlen/2),   1.10*TMean, 'gaussian' 1]
+        ['No Bond'  ,  'Cut'  ,      1,   2,               2,         latlen,            0, 'gaussian', 1],
+        ['Signal'   ,  'Sign' ,      1,   3,               3,         latlen,            0, 'gaussian', 1],
+        ['89-91%'   ,  '0.9'  ,      0,   0,               1,  int(latlen/2),   0.90*TMean, 'gaussian', 1],
+        ['91-93%'   ,  '0.92' ,      0,   1,               1,  int(latlen/2),   0.92*TMean, 'gaussian', 1],
+        ['93-95%'   ,  '0.94' ,      0,   2,               1,  int(latlen/2),   0.94*TMean, 'gaussian', 1],
+        ['95-97%'   ,  '0.96' ,      0,   3,               1,  int(latlen/2),   0.96*TMean, 'gaussian', 1],
+        ['97-99%'   ,  '0.98' ,      0,   4,               1,  int(latlen/2),   0.98*TMean, 'gaussian', 1],
+        ['99-101%'  ,  '1.00' ,      0,   5,               1,  int(latlen/2),   1.00*TMean, 'gaussian', 1],
+        ['101-103%' ,  '1.02' ,      0,   6,               1,  int(latlen/2),   1.02*TMean, 'gaussian', 1],
+        ['103-105%' ,  '1.04' ,      0,   7,               1,  int(latlen/2),   1.04*TMean, 'gaussian', 1],
+        ['105-107%' ,  '1.06' ,      0,   8,               1,  int(latlen/2),   1.06*TMean, 'gaussian', 1],
+        ['107-109%' ,  '1.08' ,      0,   9,               1,  int(latlen/2),   1.08*TMean, 'gaussian', 1],
+        ['109-111%' ,  '1.10' ,      0,  10,               1,  int(latlen/2),   1.10*TMean, 'gaussian', 1]
         ])
 
 ### PCA Options ###

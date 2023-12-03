@@ -66,6 +66,8 @@ latmid = latlen//2
 for i in range(latlen//2):
     LPYD.append([str(i),str(i), 1, i/latmid + 1/(2*latmid), 1, i, Tmean, 'gaussian', 1])
 
+# notes
+# use 3 node hidden layer, train for 25 epochs
 
 LPYD = np.asarray(LPYD, dtype=object)
 LPYD[1:, 3] = np.around(np.asarray(LPYD[1:, 3], dtype=float), 3)
