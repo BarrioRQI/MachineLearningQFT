@@ -5,7 +5,7 @@ from numpy.linalg import inv, eig
 from numpy.linalg.linalg import det
 from scipy.linalg import expm, sqrtm, tanhm
 from scipy.special import dawsn, expi
-import utils.smearing_functions as sf
+import smearing_functions as sf
 np.set_printoptions(edgeitems=30, linewidth=100000, 
     formatter=dict(float=lambda x: "%.3g" % x))
 
@@ -207,7 +207,7 @@ def get_symplectic_generator(wD,m,lambda_,lattice_length,sigma,B,D,dim=1,smearin
     include_periodic = False 
     if B==4:
         include_periodic = True
-    print(include_periodic) 
+
     F0_adjacency_list = SquareLatticeAdjList(lattice_length, dim, IncludePeriodic=include_periodic)
     F0_adjacent_int = ((1/m) if m != 0 else 1)* Fint_unitless(F0_adjacency_list)
     

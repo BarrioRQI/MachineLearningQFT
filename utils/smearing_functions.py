@@ -29,7 +29,7 @@ def lorentzian_smearing(x, sigma):
     return (sigma/(2*np.pi)) * 1/(x**2 + (sigma/2)**2)
 
 def quartic_smearing(x, sigma):
-    return 1/((x**2 + (sigma/2)**2)**2) * sigma**3/(4*np.pi)
+    return (np.sqrt(2)*(sigma/2)**3/(np.pi)) * 1/(x**4 + (sigma/2)**4) 
 
 def sharp_smearing(x, sigma):
     if abs(x) <= sigma/2:

@@ -3,25 +3,22 @@ import numpy as np
 from scipy.constants import c, hbar, elementary_charge, Boltzmann
 
 ### Meta Parameters ###
-experiment_name = "smearing_classification_all_lr=-2_n_epochs=10_T=100p00k"
-n_samples    = 20000              # Number of examples to produce for training/validating
+n_samples    = 10000              # Number of examples to produce for training/validating
 Regression = False
 overwrite = False
+gather_all_data_before_training = False
+rerun_datapoints = False
+reruns = list(range(35, 52))
 
 ### Parameters of the quantum field ###
-### Parameters of the quantum field ###
-sigma = 50e-3                 # Detector Smearing [m]
+sigma = 18e-3                 # Detector Smearing [m]
 Ksig = 16/sigma                    # Determines UV Cutoff [m^-1]
 a = np.pi/Ksig      # Lattice spacing induced by UV Cutoff [m]
 latlen = 100         # Determines IR Cutoff [a]
 mcc = 0.1*1e9*hbar                     # Field mass [eV]
 wD = 10*1e9*hbar                    # Detector gap [eV]
 lam = 10*1e9*hbar                   # Coupling energy [eV]
-Tmean = 100
-
-print(a)
-print(100*a)
-print(50*a)
+Tmean = 10
 
 
 ### Units used are hbar = c = a = 1 ###
@@ -38,20 +35,19 @@ lam = lam/E0               # Normalized Coupling Energy
 Tmean = Tmean/Temp0  # convert to hbar = c = a = k_b = 1 units
 Tdev = 0*Tmean             # Size of Temperature range
 
-print(Tmean)
 
 ### Measurement Options ###
 time_min = -12           # Start of first measurement window   [s]
-time_max = -8      # End of last measurement window      [s]
+time_max = -6      # End of last measurement window      [s]
+n_windows = 61
 
-plot_times_max = np.logspace(time_min,time_max,40,endpoint=True) # Linearly spaces measurement windows
+plot_times_max = np.logspace(time_min,time_max,n_windows,endpoint=True) # Linearly spaces measurement windows
 plot_times_max = plot_times_max/T0
 plot_times_min = plot_times_max*plot_times_max[0]/plot_times_max[1]
 
-print(plot_times_max)
 
-measurements_per_window = 10 			          # Number of measurement times considered in each window
-n_tom = 1e10                    # Number of times to repeat the whole experiment
+measurements_per_window = 32 			          # Number of measurement times considered in each window
+n_tom = 1e7                    # Number of times to repeat the whole experiment
 
 ### Defining Classes for Classification ###
 TDev = 0             # Size of Temperature range
@@ -97,9 +93,16 @@ f_train = f_train/fsum
 f_valid = f_valid/fsum
 f_test  = f_test/fsum
 
-nH1 = 4                         # Number of neurons in the first hidden layer
-hidden_layer = False                         # Number of neurons in the first hidden layer
-L2reg = 0.01                    # L2 Regularizer
-learning_rate = 1e-1             # Learning Rate
-n_epochs = 6                  # Number of epoch to train over
+nH1 = 30                         # Number of neurons in the first hidden layer
+L2reg = 1e-2                    # L2 Regularizer
+learning_rate = 1e-3             # Learning Rate
+n_epochs = 10                 # Number of epoch to train over
 minibatch_size = 256             # Minibatch size
+
+experiment_name = "smearing_classification" + \
+                  "_ntom=1e" + str(int(np.log10(n_tom))).replace('.', 'p') + \
+                  "_T=" + str(Tmean*Temp0).replace('.', 'p') + \
+                  "K_nH1=" + str(nH1) + \
+                  "_n_epochs=" + str(n_epochs) + \
+                  "_l2reg=1e" + str(np.log10(L2reg)).replace('.', 'p') + \
+                  "_lr=1e" +str(np.log10(learning_rate)).replace('.', 'p')
